@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ARC Purwakarta - Sistem Manajemen Bersih</title>
+    
+    <!-- Pustaka Utama -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Standar Rasio 16:9 di Monitor */
+        .dashboard-container {
+            width: 100%;
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        /* Target Sentuh Ramah Jempol (Min 48px) */
+        .touch-target {
+            min-height: 48px;
+            min-width: 48px;
+        }
+
+        /* Zona Render Invoice (Tersembunyi) */
+        #render-engine {
+            position: absolute;
+            left: -9999px;
+            top: 0;
+            width: 1000px;
+            background: white;
+        }
+
+        .hide { display: none !important; }
+
+        .dashboard-card {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+
+        .nav-active {
+            color: #2563eb !important;
+            background-color: #eff6ff;
+            border-radius: 1rem;
+        }
+        
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .status-badge {
+            font-size: 10px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 12px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body class="pb-24 md:pb-8">
+
+    <div class="dashboard-container min-h-screen flex flex-col">
+        
+        <!-- HEADER NAVIGASI -->
+        <header class="w-full bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-50 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="bg-blue-600 p-2.5 rounded-2xl shadow-lg shadow-blue-100">
+                    <i data-lucide="shield-check" class="text-white w-7 h-7"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight leading-none italic uppercase text-blue-900">ARC <span class="text-blue-600">Purwakarta</span></h1>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">oleh syncnindo build</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
+                <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                <span class="text-[10px] font-extrabold text-blue-700 uppercase">Sistem Siap</span>
+            </div>
+        </header>
+
+        <!-- KONTEN TAB -->
+        <main class="flex-1 p-4 md:p-8">
+            
+            <!-- TAB 1: BERANDA -->
+            <section id="tab-home" class="tab-content active space-y-6">
+                <!-- Statistik -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="dashboard-card">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Total Unit</p>
+                        <h4 class="text-2xl font-black" id="stat-total">0</h4>
+                    </div>
+                    <div class="dashboard-card">
+                        <p class="text-[10px] font-bold text-green-500 uppercase mb-1">Tersedia</p>
+                        <h4 class="text-2xl font-black text-green-600" id="stat-avail">0</h4>
+                    </div>
+                    <div class="dashboard-card">
+                        <p class="text-[10px] font-bold text-blue-500 uppercase mb-1">Disewa</p>
+                        <h4 class="text-2xl font-black text-blue-600" id="stat-rent">0</h4>
+                    </div>
+                    <div class="dashboard-card">
+                        <p class="text-[10px] font-bold text-orange-500 uppercase mb-1">Perbaikan</p>
+                        <h4 class="text-2xl font-black text-orange-600" id="stat-maint">0</h4>
+                    </div>
+                </div>
+
+                <!-- Tombol Utama -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button onclick="openTab('history'); showForm();" class="w-full py-5 bg-blue-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 flex items-center justify-center gap-3 active:scale-95 transition">
+                        <i data-lucide="plus-circle"></i> Buat Invoice Baru
+                    </button>
+                    <button onclick="openTab('fleet'); showAddCar();" class="w-full py-5 bg-slate-900 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-slate-200 flex items-center justify-center gap-3 active:scale-95 transition">
+                        <i data-lucide="car"></i> Tambah Unit Mobil
+                    </button>
+                </div>
+
+                <!-- Aktivitas Terakhir -->
+                <div class="dashboard-card">
+                    <h3 class="font-bold text-sm text-slate-800 mb-6 flex items-center gap-2 italic uppercase">
+                        <i data-lucide="clock" class="w-4 h-4 text-blue-600"></i> Aktivitas Terakhir
+                    </h3>
+                    <div id="recent-list" class="space-y-4">
+                        <!-- Data melalui JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: ARMADA (FLEET) -->
+            <section id="tab-fleet" class="tab-content space-y-6">
+                <div class="flex justify-between items-center bg-white p-6 rounded-[2rem] border border-slate-100">
+                    <div>
+                        <h2 class="font-black text-xl text-slate-800 italic uppercase">Daftar Armada</h2>
+                        <p class="text-xs font-bold text-slate-400">Total <span id="fleet-count">0</span> Unit dalam sistem</p>
+                    </div>
+                    <button onclick="showAddCar()" class="touch-target px-6 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-100">+ Tambah</button>
+                </div>
+                <div id="fleet-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Data melalui JS -->
+                </div>
+            </section>
+
+            <!-- TAB 3: RIWAYAT & EXCEL -->
+            <section id="tab-history" class="tab-content space-y-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[2rem] border border-slate-100">
+                    <div>
+                        <h2 class="font-black text-xl text-slate-800 italic uppercase">Riwayat Pembukuan</h2>
+                        <p class="text-xs font-bold text-slate-400" id="history-label">0 Transaksi Tersimpan</p>
+                    </div>
+                    <button onclick="exportToExcel()" class="w-full md:w-auto touch-target px-6 bg-green-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-green-100">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Tarik Data Excel
+                    </button>
+                </div>
+                <div id="history-list" class="space-y-4">
+                    <!-- Data melalui JS -->
+                </div>
+            </section>
+
+            <!-- TAB 4: PENGATURAN -->
+            <section id="tab-settings" class="tab-content space-y-6">
+                <div class="dashboard-card space-y-6">
+                    <h3 class="font-black italic uppercase text-slate-800 border-b pb-4">Pengaturan Sistem</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase block mb-1.5 ml-1">Nama Rental</label>
+                            <div class="bg-slate-50 p-4 rounded-2xl border font-bold text-slate-700 italic uppercase">ARC Purwakarta</div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase block mb-1.5 ml-1">Versi Dashboard</label>
+                            <div class="bg-slate-50 p-4 rounded-2xl border font-bold text-slate-700 uppercase tracking-widest">PRO V2.5.0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="dashboard-card border-red-100 bg-red-50/20">
+                    <h3 class="font-black text-red-800 mb-2 uppercase flex items-center gap-2"><i data-lucide="trash-2" class="w-5 h-5"></i> Reset Database</h3>
+                    <p class="text-xs font-bold text-red-600/70 mb-6 leading-relaxed">Menghapus seluruh daftar mobil dan riwayat invoice secara permanen dari browser ini.</p>
+                    <button onclick="factoryReset()" class="w-full py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition">Hapus Seluruh Data</button>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- BOTTOM NAV -->
+        <nav class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 flex justify-around items-center py-3 z-[60] shadow-2xl">
+            <button onclick="openTab('home')" id="nav-home" class="flex flex-col items-center gap-1 p-2 text-slate-400 flex-1 nav-active transition-all">
+                <i data-lucide="layout-grid" class="w-5 h-5"></i>
+                <span class="text-[9px] font-black uppercase tracking-tighter">Beranda</span>
+            </button>
+            <button onclick="openTab('fleet')" id="nav-fleet" class="flex flex-col items-center gap-1 p-2 text-slate-400 flex-1 transition-all">
+                <i data-lucide="car" class="w-5 h-5"></i>
+                <span class="text-[9px] font-black uppercase tracking-tighter">Armada</span>
+            </button>
+            <button onclick="openTab('history')" id="nav-history" class="flex flex-col items-center gap-1 p-2 text-slate-400 flex-1 transition-all">
+                <i data-lucide="history" class="w-5 h-5"></i>
+                <span class="text-[9px] font-black uppercase tracking-tighter">Riwayat</span>
+            </button>
+            <button onclick="openTab('settings')" id="nav-settings" class="flex flex-col items-center gap-1 p-2 text-slate-400 flex-1 transition-all">
+                <i data-lucide="settings-2" class="w-5 h-5"></i>
+                <span class="text-[9px] font-black uppercase tracking-tighter">Sistem</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- MODAL INVOICE FORM -->
+    <div id="form-modal" class="fixed inset-0 z-[100] bg-slate-900/98 backdrop-blur-xl flex flex-col hide">
+        <header class="p-5 flex justify-between items-center border-b border-white/10 sticky top-0 bg-slate-900">
+            <div class="flex items-center gap-3">
+                <i data-lucide="file-plus-2" class="text-blue-500 w-6 h-6"></i>
+                <h2 class="text-white font-black uppercase italic text-lg tracking-tight">Terbitkan Invoice</h2>
+            </div>
+            <button onclick="hideForm()" class="p-2 text-white/50 hover:text-white transition"><i data-lucide="x"></i></button>
+        </header>
+        <div class="flex-1 overflow-y-auto p-4 md:p-10">
+            <div class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 pb-32">
+                <!-- Data Penyewa -->
+                <div class="bg-white rounded-[2rem] p-8 space-y-5 shadow-lg">
+                    <h3 class="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em] border-b pb-3">1. Identitas Penyewa</h3>
+                    <input type="text" id="in-nama" class="w-full bg-slate-50 p-4 rounded-2xl border font-bold placeholder:text-slate-300" placeholder="Nama Lengkap Sesuai KTP">
+                    <input type="tel" id="in-nik" maxlength="16" class="w-full bg-slate-50 p-4 rounded-2xl border font-bold placeholder:text-slate-300" placeholder="Nomor NIK (16 Digit)">
+                    <input type="tel" id="in-wa" class="w-full bg-slate-50 p-4 rounded-2xl border font-bold placeholder:text-slate-300" placeholder="WhatsApp (08...)">
+                </div>
+                <!-- Data Sewa -->
+                <div class="bg-white rounded-[2rem] p-8 space-y-5 shadow-lg">
+                    <h3 class="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em] border-b pb-3">2. Detail Penyewaan</h3>
+                    <select id="in-unit-select" class="w-full bg-slate-50 p-4 rounded-2xl border font-bold appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%232563eb%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:18px_18px] bg-[right_16px_center] bg-no-repeat">
+                        <!-- Filled via JS -->
+                    </select>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-[9px] font-bold text-slate-400 uppercase ml-1 block">Harga / Hari</label>
+                            <input type="number" id="in-harga" class="w-full bg-slate-50 p-4 rounded-2xl border font-bold">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[9px] font-bold text-slate-400 uppercase ml-1 block">Lama Sewa (Hari)</label>
+                            <input type="number" id="in-hari" value="1" min="1" class="w-full bg-slate-50 p-4 rounded-2xl border font-bold">
+                        </div>
+                    </div>
+                    <textarea id="in-jaminan" class="w-full bg-slate-50 p-4 rounded-2xl border font-bold h-20 resize-none placeholder:text-slate-300" placeholder="Jaminan (Contoh: Motor Beat T 1234 XY)"></textarea>
+                </div>
+                <!-- Foto KYC -->
+                <div class="md:col-span-2 bg-white rounded-[2rem] p-8 shadow-lg">
+                    <h3 class="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em] border-b pb-4 mb-6">3. Dokumentasi Bukti (KYC)</h3>
+                    <div class="grid grid-cols-3 gap-4">
+                        <button onclick="openCamera('ktp')" id="box-ktp" class="aspect-[3/4] bg-slate-50 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center relative overflow-hidden active:scale-95 transition">
+                            <img id="pre-ktp" class="absolute inset-0 w-full h-full object-cover hide">
+                            <div id="ic-ktp" class="text-center"><i data-lucide="credit-card" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i><span class="text-[10px] font-black text-slate-400 uppercase">Foto KTP</span></div>
+                        </button>
+                        <button onclick="openCamera('sim')" id="box-sim" class="aspect-[3/4] bg-slate-50 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center relative overflow-hidden active:scale-95 transition">
+                            <img id="pre-sim" class="absolute inset-0 w-full h-full object-cover hide">
+                            <div id="ic-sim" class="text-center"><i data-lucide="shield" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i><span class="text-[10px] font-black text-slate-400 uppercase">Foto SIM</span></div>
+                        </button>
+                        <button onclick="openCamera('unit')" id="box-unit" class="aspect-[3/4] bg-slate-50 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center relative overflow-hidden active:scale-95 transition">
+                            <img id="pre-unit" class="absolute inset-0 w-full h-full object-cover hide">
+                            <div id="ic-unit" class="text-center"><i data-lucide="camera" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i><span class="text-[10px] font-black text-slate-400 uppercase">Unit & Penyewa</span></div>
+                        </button>
+                    </div>
+                    <button onclick="finalizeTransaction()" id="btn-submit" class="w-full mt-10 py-5 bg-blue-600 text-white font-black rounded-2xl uppercase tracking-[0.3em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all">Selesaikan Transaksi & Cetak JPG</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL KAMERA -->
+    <div id="cam-modal" class="fixed inset-0 z-[200] bg-black flex flex-col hide">
+        <video id="v-stream" autoplay playsinline muted class="flex-1 object-cover"></video>
+        <div class="p-10 flex justify-between items-center bg-slate-900/90 backdrop-blur-md">
+            <button onclick="closeCam()" class="text-white font-black text-xs uppercase px-5 tracking-widest">Batal</button>
+            <button onclick="takeSnap()" class="w-20 h-20 bg-white rounded-full border-[8px] border-slate-700 shadow-2xl active:scale-90 transition"></button>
+            <div class="w-20"></div>
+        </div>
+    </div>
+
+    <!-- PREVIEW FINAL MODAL -->
+    <div id="preview-modal" class="fixed inset-0 z-[150] bg-slate-900/95 backdrop-blur-sm flex items-center justify-center p-4 hide">
+        <div class="bg-white w-full max-w-2xl rounded-[2.5rem] p-6 overflow-y-auto max-h-[90vh] shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-black italic uppercase text-slate-800 tracking-tight">Invoice Digital Siap</h3>
+                <button onclick="closePreview()" class="p-2 bg-slate-100 rounded-full hover:bg-red-50 hover:text-red-500 transition"><i data-lucide="x"></i></button>
+            </div>
+            <img id="final-invoice-img" class="w-full border-2 border-slate-100 rounded-[2rem] mb-8 shadow-inner">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button onclick="downloadJPG()" class="w-full py-4 bg-slate-900 text-white font-black rounded-2xl flex items-center justify-center gap-2 uppercase text-xs tracking-widest"><i data-lucide="download"></i> Simpan Ke Galeri</button>
+                <button id="btn-share-wa" class="w-full py-4 bg-green-600 text-white font-black rounded-2xl flex items-center justify-center gap-2 uppercase text-xs tracking-widest"><i data-lucide="message-circle"></i> Kirim WhatsApp</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TEMPLATE RENDER (HIDDEN) -->
+    <div id="render-engine">
+        <div id="tpl-invoice" style="padding: 70px; background: white; color: #1e293b; font-family: 'Plus Jakarta Sans', sans-serif; width: 1000px;">
+            <div style="display: flex; justify-content: space-between; border-bottom: 12px solid #2563eb; padding-bottom: 40px; margin-bottom: 50px;">
+                <div>
+                    <h1 style="font-size: 60px; font-weight: 800; margin: 0; color: #0f172a; font-style: italic; letter-spacing: -3px;">ARC <span style="color: #2563eb;">PURWAKARTA</span></h1>
+                    <p style="font-size: 14px; font-weight: 800; color: #64748b; margin-top: 8px; text-transform: uppercase; letter-spacing: 6px;">oleh syncnindo build</p>
+                    <div style="margin-top: 35px; font-size: 15px; font-weight: 600; line-height: 1.8;">
+                        📍 Ds. Campakasari, Kec. Campaka, Purwakarta<br>
+                        📞 WhatsApp Admin: 0877-3380-2012
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="background: #2563eb; color: white; padding: 15px 30px; font-weight: 800; border-radius: 12px; font-size: 14px; display: inline-block; margin-bottom: 25px; text-transform: uppercase; letter-spacing: 2px;">Invoice Sewa Resmi</div>
+                    <p id="tpl-id" style="font-size: 36px; font-weight: 900; margin: 0; color: #0f172a;">#ARC-XXXX</p>
+                    <p id="tpl-date" style="font-size: 14px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-top: 8px;">TANGGAL TERBIT</p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 60px; margin-bottom: 60px;">
+                <div style="flex: 1.2;">
+                    <h3 style="font-size: 13px; font-weight: 800; color: #2563eb; border-bottom: 3px solid #f1f5f9; padding-bottom: 12px; text-transform: uppercase; letter-spacing: 3px;">I. Informasi Penyewa</h3>
+                    <p id="tpl-nama" style="font-size: 36px; font-weight: 800; margin: 25px 0 10px 0; text-transform: uppercase; color: #0f172a;">NAMA PENYEWA</p>
+                    <p style="font-size: 18px; color: #64748b; font-weight: 600;">NIK: <span id="tpl-nik">-</span> | WA: <span id="tpl-wa">-</span></p>
+                </div>
+                <div style="flex: 0.8;">
+                    <h3 style="font-size: 13px; font-weight: 800; color: #dc2626; border-bottom: 3px solid #f1f5f9; padding-bottom: 12px; text-transform: uppercase; letter-spacing: 3px;">II. Jaminan (Ditahan)</h3>
+                    <div style="background: #fef2f2; border: 4px dashed #fca5a5; padding: 30px; border-radius: 25px; margin-top: 25px; text-align: center;">
+                        <p id="tpl-jaminan" style="font-size: 18px; font-weight: 800; color: #991b1b; margin: 0; font-style: italic; text-transform: uppercase;">BELUM DIISI</p>
+                    </div>
+                </div>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 60px; border: 4px solid #f1f5f9; border-radius: 30px; overflow: hidden;">
+                <tr style="background: #2563eb; color: white; font-size: 14px;">
+                    <th style="padding: 30px; text-align: left; text-transform: uppercase; letter-spacing: 3px;">Deskripsi Unit & Plat</th>
+                    <th style="padding: 30px; text-align: center; text-transform: uppercase; letter-spacing: 3px;">Durasi</th>
+                    <th style="padding: 30px; text-align: right; text-transform: uppercase; letter-spacing: 3px;">Total Tagihan</th>
+                </tr>
+                <tr>
+                    <td style="padding: 40px; border-bottom: 2px solid #f1f5f9;">
+                        <p id="tpl-unit" style="font-size: 32px; font-weight: 800; margin: 0; color: #0f172a;">UNIT MOBIL</p>
+                        <p id="tpl-nopol" style="font-size: 20px; font-weight: 800; color: #2563eb; margin-top: 12px; text-transform: uppercase; letter-spacing: 4px;">T 0000 XX</p>
+                    </td>
+                    <td id="tpl-dur" style="padding: 40px; text-align: center; font-weight: 800; font-size: 28px; border-bottom: 2px solid #f1f5f9;">1 Hari</td>
+                    <td id="tpl-total" style="padding: 40px; text-align: right; font-size: 48px; font-weight: 900; color: #2563eb; border-bottom: 2px solid #f1f5f9;">Rp 0</td>
+                </tr>
+            </table>
+            <div style="display: flex; gap: 30px; margin-bottom: 60px;">
+                <img id="tpl-img-ktp" style="flex: 1; height: 250px; object-fit: cover; border-radius: 25px; border: 6px solid #2563eb; opacity: 0;">
+                <img id="tpl-img-sim" style="flex: 1; height: 250px; object-fit: cover; border-radius: 25px; border: 6px solid #2563eb; opacity: 0;">
+                <img id="tpl-img-unit" style="flex: 1; height: 250px; object-fit: cover; border-radius: 25px; border: 6px solid #2563eb; opacity: 0;">
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 120px; text-align: center;">
+                <div style="width: 42%; border-top: 5px solid #0f172a; padding-top: 20px; font-weight: 800; font-size: 28px; text-transform: uppercase;" id="tpl-ttd">PENYEWA</div>
+                <div style="width: 42%; border-top: 5px solid #0f172a; padding-top: 20px; font-weight: 800; font-size: 28px; text-transform: uppercase;">Manajemen ARC</div>
+            </div>
+            <div style="text-align: center; margin-top: 100px; padding-top: 40px; border-top: 2px solid #f1f5f9; font-size: 12px; font-weight: 800; color: #cbd5e1; letter-spacing: 6px; text-transform: uppercase;">Dokumen Digital Resmi • ARC Purwakarta</div>
+        </div>
+    </div>
+
+    <!-- SISTEM LOGIKA JS -->
+    <script>
+        lucide.createIcons();
+
+        // 1. STATE AWAL (BERSIH)
+        let fleet = JSON.parse(localStorage.getItem('arc_fleet_clean')) || [];
+        let history = JSON.parse(localStorage.getItem('arc_history_clean')) || [];
+        let photos = { ktp: null, sim: null, unit: null };
+        let activeCam = null;
+        let camStream = null;
+
+        // 2. SISTEM PERSISTENCE
+        function syncDB() {
+            localStorage.setItem('arc_fleet_clean', JSON.stringify(fleet));
+            localStorage.setItem('arc_history_clean', JSON.stringify(history));
+            renderUI();
+        }
+
+        // 3. RENDERING UI
+        function renderUI() {
+            renderHome();
+            renderFleet();
+            renderHistory();
+            populateFormSelect();
+        }
+
+        function renderHome() {
+            const avail = fleet.filter(u => u.status === 'Tersedia').length;
+            const rent = fleet.filter(u => u.status === 'Disewa').length;
+            const maint = fleet.filter(u => u.status === 'Perbaikan').length;
+
+            document.getElementById('stat-total').innerText = fleet.length;
+            document.getElementById('stat-avail').innerText = avail;
+            document.getElementById('stat-rent').innerText = rent;
+            document.getElementById('stat-maint').innerText = maint;
+
+            const list = document.getElementById('recent-list');
+            list.innerHTML = history.length ? '' : '<p class="text-center text-[10px] font-black text-slate-300 py-10 uppercase tracking-[0.4em]">Kosong</p>';
+            
+            history.slice(-3).reverse().forEach(item => {
+                list.innerHTML += `
+                    <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600"><i data-lucide="user" class="w-5 h-5"></i></div>
+                            <div>
+                                <p class="text-xs font-black text-slate-800 uppercase italic">${item.name}</p>
+                                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">${item.unitName} • ${new Date(item.date).toLocaleDateString('id-ID')}</p>
+                            </div>
+                        </div>
+                        <i data-lucide="arrow-right" class="w-4 h-4 text-slate-300"></i>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function renderFleet() {
+            const list = document.getElementById('fleet-list');
+            document.getElementById('fleet-count').innerText = fleet.length;
+            list.innerHTML = fleet.length ? '' : '<div class="col-span-full py-20 text-center bg-white rounded-[2rem] border-2 border-dashed border-slate-100"><p class="text-slate-300 font-black uppercase tracking-widest text-xs">Belum ada mobil</p></div>';
+            
+            fleet.forEach(u => {
+                const sCls = u.status === 'Tersedia' ? 'bg-green-100 text-green-600' : u.status === 'Disewa' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600';
+                list.innerHTML += `
+                    <div class="dashboard-card group hover:border-blue-200">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h4 class="font-black text-slate-800 italic uppercase leading-none">${u.name}</h4>
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">${u.plate}</p>
+                            </div>
+                            <span class="status-badge ${sCls}">${u.status}</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-5 border-t border-slate-50">
+                            <div>
+                                <p class="text-[8px] font-black text-slate-400 uppercase">Tarif</p>
+                                <span class="text-sm font-black text-blue-600 tracking-tighter italic">Rp ${new Intl.NumberFormat('id-ID').format(u.price)}</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="rotateStatus(${u.id})" class="p-2.5 bg-slate-50 rounded-xl text-slate-400 hover:text-blue-600 transition"><i data-lucide="refresh-ccw" class="w-4 h-4"></i></button>
+                                <button onclick="deleteUnit(${u.id})" class="p-2.5 bg-red-50 rounded-xl text-red-400 hover:text-red-600 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            document.getElementById('history-label').innerText = history.length + ' Transaksi Tercatat';
+            list.innerHTML = history.length ? '' : '<div class="py-32 text-center"><i data-lucide="folder-open" class="w-12 h-12 mx-auto text-slate-100 mb-4"></i><p class="text-slate-300 font-black uppercase text-xs tracking-[0.5em]">Kosong</p></div>';
+            
+            history.slice().reverse().forEach((h, idx) => {
+                const realIdx = history.length - 1 - idx;
+                list.innerHTML += `
+                    <div class="dashboard-card flex items-center justify-between border-l-8 border-l-blue-600 animate-[fadeIn_0.3s]">
+                        <div class="flex gap-5 items-center">
+                            <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm"><i data-lucide="clipboard-list"></i></div>
+                            <div>
+                                <h4 class="font-black text-slate-800 uppercase italic text-sm tracking-tight">${h.name}</h4>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">${h.unitName} • ${h.id}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="viewInvoice(${realIdx})" class="touch-target px-5 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-100 hover:bg-blue-700 transition"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                            <button onclick="deleteHistory(${realIdx})" class="p-3.5 bg-red-50 text-red-400 rounded-2xl hover:bg-red-100 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        // 4. ACTION FUNCTIONS
+        function openTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('nav-active'));
+            document.getElementById('tab-' + id).classList.add('active');
+            document.getElementById('nav-' + id).classList.add('nav-active');
+            lucide.createIcons();
+        }
+
+        function showAddCar() {
+            const n = prompt("Model Mobil:");
+            const p = prompt("Nomor Plat:");
+            const pr = prompt("Harga per Hari (Angka):");
+            if(n && p && pr) {
+                fleet.push({ id: Date.now(), name: n, plate: p, price: parseInt(pr), status: 'Tersedia' });
+                syncDB();
+            }
+        }
+
+        function rotateStatus(id) {
+            const u = fleet.find(x => x.id === id);
+            const s = ['Tersedia', 'Perbaikan', 'Disewa'];
+            let next = s.indexOf(u.status) + 1;
+            if(next >= s.length) next = 0;
+            u.status = s[next];
+            syncDB();
+        }
+
+        function deleteUnit(id) {
+            if(confirm("Hapus mobil ini?")) {
+                fleet = fleet.filter(x => x.id !== id);
+                syncDB();
+            }
+        }
+
+        // 5. EXCEL EXPORT (CSV)
+        function exportToExcel() {
+            if(!history.length) return alert("Belum ada data.");
+            let csv = "ID_INVOICE,TANGGAL,PELANGGAN,NIK,WA,UNIT,PLAT,DURASI,TOTAL\n";
+            history.forEach(r => {
+                csv += `"${r.id}","${new Date(r.date).toLocaleDateString()}","${r.name.toUpperCase()}","'${r.nik}","${r.wa}","${r.unitName}","${r.plate}","${r.dur}","${r.total}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Laporan_ARC_${new Date().toLocaleDateString()}.csv`;
+            link.click();
+        }
+
+        // 6. INVOICE FLOW
+        function showForm() { document.getElementById('form-modal').classList.remove('hide'); }
+        function hideForm() { document.getElementById('form-modal').classList.add('hide'); }
+        function populateFormSelect() {
+            const s = document.getElementById('in-unit-select');
+            s.innerHTML = '<option value="" disabled selected>Pilih Unit Tersedia</option>';
+            fleet.filter(u => u.status === 'Tersedia').forEach(u => {
+                s.innerHTML += `<option value="${u.id}">${u.name} - ${u.plate}</option>`;
+            });
+            s.onchange = (e) => {
+                const u = fleet.find(x => x.id == e.target.value);
+                if(u) document.getElementById('in-harga').value = u.price;
+            };
+        }
+
+        async function openCamera(target) {
+            activeCam = target;
+            document.getElementById('cam-modal').classList.remove('hide');
+            try {
+                camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                document.getElementById('v-stream').srcObject = camStream;
+            } catch (e) { alert("Akses kamera ditolak."); closeCam(); }
+        }
+
+        function closeCam() {
+            if(camStream) camStream.getTracks().forEach(t => t.stop());
+            document.getElementById('cam-modal').classList.add('hide');
+        }
+
+        function takeSnap() {
+            const c = document.createElement('canvas');
+            c.width = 1000; c.height = 1333;
+            c.getContext('2d').drawImage(document.getElementById('v-stream'), 0, 0, 1000, 1333);
+            const data = c.toDataURL('image/jpeg', 0.6);
+            photos[activeCam] = data;
+            document.getElementById(`pre-${activeCam}`).src = data;
+            document.getElementById(`pre-${activeCam}`).classList.remove('hide');
+            document.getElementById(`ic-${activeCam}`).classList.add('hide');
+            closeCam();
+        }
+
+        async function finalizeTransaction() {
+            const uid = document.getElementById('in-unit-select').value;
+            const nama = document.getElementById('in-nama').value;
+            if(!uid || !nama || !photos.ktp || !photos.unit) return alert("⚠️ Mohon isi Nama, Unit, Foto KTP & Foto Unit.");
+
+            const btn = document.getElementById('btn-submit');
+            btn.disabled = true; btn.innerText = "Memproses...";
+
+            const unit = fleet.find(u => u.id == uid);
+            const hrg = document.getElementById('in-harga').value;
+            const hari = document.getElementById('in-hari').value || 1;
+            const jam = document.getElementById('in-jaminan').value || '-';
+            const total = parseInt(hrg) * parseInt(hari);
+            const totalFmt = "Rp " + new Intl.NumberFormat('id-ID').format(total);
+            const now = new Date();
+            const invId = "#ARC-" + Math.random().toString(36).substr(2, 5).toUpperCase();
+
+            // Populate Template
+            document.getElementById('tpl-id').innerText = invId;
+            document.getElementById('tpl-date').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('tpl-nama').innerText = nama;
+            document.getElementById('tpl-nik').innerText = document.getElementById('in-nik').value || '-';
+            document.getElementById('tpl-wa').innerText = document.getElementById('in-wa').value || '-';
+            document.getElementById('tpl-jaminan').innerText = jam;
+            document.getElementById('tpl-unit').innerText = unit.name;
+            document.getElementById('tpl-nopol').innerText = unit.plate;
+            document.getElementById('tpl-dur').innerText = hari + ' Hari';
+            document.getElementById('tpl-total').innerText = totalFmt;
+            document.getElementById('tpl-ttd').innerText = nama;
+
+            ['ktp', 'sim', 'unit'].forEach(k => {
+                const el = document.getElementById(`tpl-img-${k}`);
+                if(photos[k]) { el.src = photos[k]; el.style.opacity = "1"; } else { el.style.opacity = "0"; }
+            });
+
+            unit.status = 'Disewa';
+
+            setTimeout(async () => {
+                const cvs = await html2canvas(document.getElementById('tpl-invoice'), { scale: 2 });
+                const img = cvs.toDataURL('image/jpeg', 0.9);
+
+                history.push({
+                    id: invId, date: now.toISOString(), name: nama, nik: document.getElementById('in-nik').value || '-',
+                    wa: document.getElementById('in-wa').value || '-', unitName: unit.name, plate: unit.plate,
+                    dur: hari, total: totalFmt, imageData: img
+                });
+
+                syncDB();
+                btn.disabled = false; btn.innerText = "Selesaikan Transaksi & Cetak JPG";
+                hideForm();
+                
+                // Clear Form
+                document.querySelectorAll('#form-modal input, #form-modal textarea').forEach(e => e.value = "");
+                photos = { ktp: null, sim: null, unit: null };
+                ['ktp', 'sim', 'unit'].forEach(k => {
+                    document.getElementById(`pre-${k}`).classList.add('hide');
+                    document.getElementById(`ic-${k}`).classList.remove('hide');
+                });
+
+                viewInvoice(history.length - 1);
+            }, 1000);
+        }
+
+        function viewInvoice(idx) {
+            const h = history[idx];
+            document.getElementById('final-invoice-img').src = h.imageData;
+            document.getElementById('preview-modal').classList.remove('hide');
+            
+            document.getElementById('btn-share-wa').onclick = () => {
+                const m = `Halo Kak ${h.name.toUpperCase()}, ini invoice sewa unit ${h.unitName} dari ARC Purwakarta.\nTotal: ${h.total}\nTerima kasih!`;
+                window.open(`https://wa.me/${h.wa.replace(/^0/, '62')}?text=${encodeURIComponent(m)}`);
+            };
+            window.currentImg = h.imageData;
+            window.currentName = `Invoice_ARC_${h.name.replace(/\s+/g, '_')}`;
+        }
+
+        function closePreview() { document.getElementById('preview-modal').classList.add('hide'); }
+        function downloadJPG() {
+            const l = document.createElement('a');
+            l.href = window.currentImg;
+            l.download = window.currentName + '.jpg';
+            l.click();
+        }
+
+        function deleteHistory(idx) {
+            if(confirm("Hapus riwayat ini?")) {
+                history.splice(idx, 1);
+                syncDB();
+            }
+        }
+
+        function factoryReset() {
+            if(confirm("PERINGATAN! Ini akan menghapus SELURUH data armada dan pembukuan. Lanjutkan?")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // START
+        renderUI();
+    </script>
+</body>
+</html>
+
